@@ -1,0 +1,175 @@
+<html>
+	<head>
+		<title>Test</title>
+	</head>
+	<body ng-app="terminal">
+	
+<div ng-controller="TerminalController">
+	<div ng-if="mode === 'enter-words'">
+		<div ng-repeat="word in wordList">
+			{{word}}
+		</div>
+	
+		<input ng-model="newWordContainer.newWord" ng-enter="addWord()"></input>
+	</div>
+	<div ng-if="mode === 'find-solution'">
+		<div>Pick the word: "{{wordList[wordSuggestionIndex]}}".</div>
+		<div>
+			<button style="margin-right:6px;" ng-repeat="option in likenessOptions" ng-click="chooseLikeness(option)">{{option}}</button>
+			<br/>
+			<button ng-click="showCongrats()">This was the correct word</button>
+		</div>
+	</div>
+	<div ng-if="mode === 'show-congrats'">
+		Congrats!
+		<br/>
+		<button ng-click="initialize()">Reset</button>
+	</div>
+</div>		
+	
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular-route.min.js"></script>
+		
+<script>
+
+(function (angular) {
+
+    'use strict';
+
+    var terminalApp = angular.module("terminal", ['ngRoute']);
+    
+    
+    terminalApp.directive('ngEnter', function() {
+        return function(scope, element, attrs) {
+            element.bind("keydown keypress", function(event) {
+                if(event.which === 13) {
+                    scope.$apply(function(){
+                        scope.$eval(attrs.ngEnter, {'event': event});
+                    });
+
+                    event.preventDefault();
+                }
+            });
+        };
+    });    
+    
+    terminalApp.controller("TerminalController", ['$scope', '$window', function($scope, $window){
+        
+        
+        var TEST_WORDS = ["hurting", "fencing", "persona", "fearing", "legions", "sealant", "helping", "writing", "elegant", "selling", "wearing", "heights", "poisons", "dealing", "letting", "heavens", "reading", "sealing", "testing"],
+        
+        calculateLikeness = function(word1, word2) {
+            var likeness = 0, i;
+            for (i = 0; i < word1.length; i++) {
+                if (word1[i] === word2[i]) {
+                    likeness++;
+                }
+            }
+            return likeness;
+        },
+        
+        createLikenessMatrix = function(word, allWords) {
+            var likenessMatrix = [], i, likeness, anotherWord;
+            
+            for (i = 0; i < word.length; i++) {
+                likenessMatrix[i] = [];
+            }
+            
+            for (i = 0; i < allWords.length; i++) {
+                anotherWord = allWords[i];
+                if (word !== anotherWord) {
+                    likeness = calculateLikeness(word, anotherWord);
+                    likenessMatrix[likeness].push(anotherWord); 
+                }
+            }
+            
+            return likenessMatrix;
+        },
+        
+        calculateMaxLikeness = function(likenessMatrix) {
+            var maxLikeness = 0, i;
+            
+            for (i = 0; i < likenessMatrix.length; i++) {
+                if (likenessMatrix[i].length > maxLikeness) {
+                    maxLikeness = likenessMatrix[i].length;
+                }
+            }
+            return maxLikeness;
+        },
+        
+        
+        findBestLikenessMatrix = function(allLikenessMatrices) {
+            // Determines the best likeness matrix to choose based on the max likeness score (lower the better)
+
+            var bestMaxLikeness = 99, bestMaxLikenessIndex = -1, thisMaxLikeness, i;
+            
+            for (i = 0; i < allLikenessMatrices.length; i++) {
+                thisMaxLikeness = calculateMaxLikeness(allLikenessMatrices[i]);
+                if (thisMaxLikeness < bestMaxLikeness) {
+                    bestMaxLikeness = thisMaxLikeness;
+                    bestMaxLikenessIndex = i;
+                }
+            }
+            
+            return bestMaxLikenessIndex;
+            
+        };
+        
+        $scope.findSolution = function() {
+            var i, allLikenessMatrices = [], bestLikenessMatrixIndex, actualLikeness, newWordList;
+            for (i = 0; i < $scope.wordList.length; i++) {
+                allLikenessMatrices[i] = createLikenessMatrix($scope.wordList[i], $scope.wordList);
+            }
+            $scope.allLikenessMatrices = allLikenessMatrices;
+            bestLikenessMatrixIndex = findBestLikenessMatrix(allLikenessMatrices);
+            
+            $scope.wordSuggestionIndex = findBestLikenessMatrix(allLikenessMatrices);
+        };
+        
+        $scope.chooseLikeness = function(actualLikeness) {
+            $scope.wordList = $scope.allLikenessMatrices[$scope.wordSuggestionIndex][actualLikeness];
+            $scope.findSolution();
+        };
+        
+        $scope.addWord = function() {
+            if ($scope.newWordContainer.newWord === "") {
+                // done adding words.
+                $scope.mode="find-solution";
+                
+                var likenessOptions = [], i;
+                for (i = 0; i < $scope.wordList[0].length-1; i++) {
+                    likenessOptions.push(i);
+                }
+                
+                $scope.likenessOptions = likenessOptions;
+                $scope.findSolution();
+                
+            } else {
+                $scope.wordList.push($scope.newWordContainer.newWord);
+                $scope.newWordContainer.newWord = "";
+            }
+        };
+        
+        $scope.showCongrats = function() {
+            $scope.mode = "show-congrats";
+        };
+        
+        $scope.initialize = function() {
+            $scope.wordList = [];
+            $scope.mode="enter-words";
+            $scope.likenessOptions = [];
+            $scope.wordSuggestionIndex = undefined;
+            $scope.allLikenessMatrices = undefined;
+            $scope.newWordContainer = {newWord:""};
+        };
+        
+        $scope.initialize();
+        
+    }]);
+    
+}(window.angular));
+		
+</script>
+		
+	</body>
+</html>
